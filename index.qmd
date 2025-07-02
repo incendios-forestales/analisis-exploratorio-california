@@ -1,0 +1,141 @@
+---
+title: "Análisis exploratorio de incendios en California (2020-2025)"
+format: html
+toc: true
+lang: es
+theme: cosmo
+---
+
+# Carga de bibliotecas
+
+```{r}
+#| label: cargar-bibliotecas
+#| warning: false
+#| message: false
+#| code-fold: true
+
+library(tidyverse)
+library(lubridate)
+library(plotly)
+```
+
+# Carga de datos
+
+```{r}
+#| label: cargar-datos
+#| warning: false
+#| message: false
+#| code-fold: true
+
+incendios <- read_csv("incendios-ca-historicos-2020-2025.csv")
+
+incendios_mes <-
+  incendios |>
+  mutate(
+    anio = year(ALARM_DATE),
+    mes  = month(ALARM_DATE, label = TRUE, abbr = TRUE)
+  ) |>
+  group_by(anio, mes) |>
+  summarise(
+    n                       = n(),                          # cantidad de incendios
+    area_quemada_total      = sum(GIS_ACRES, na.rm = TRUE), # área quemada total
+    temperatura_2m_promedio = mean(TEMPERATURE_2M_ALARM_DATE, na.rm = TRUE), # temperatura promedio
+    .groups                 = "drop"
+  )
+
+# Asegurar que los meses queden en orden enero-diciembre
+incendios_mes$mes <- factor(
+  incendios_mes$mes,
+  levels = month(ymd("2025-01-01") + months(0:11), label = TRUE, abbr = TRUE)
+)
+```
+
+# Cantidad de incendios por mes y año
+
+```{r}
+#| label: grafico-cantidad-incendios_por_mes
+#| code-fold: true
+
+# Gráfico de barras agrupadas
+g <-
+  ggplot(incendios_mes, aes(x = mes, y = n, fill = factor(anio))) +
+  geom_col(position = position_dodge(width = 0.8)) +
+  labs(
+    x     = "Mes",
+    y     = "Cantidad de incendios",
+    fill  = "Año"
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
+  scale_fill_brewer(palette = "YlOrRd") +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+# Convertir a interactivo
+g_interactivo <- ggplotly(g, tooltip = c("anio", "mes", "n"))
+
+# Mostrar
+g_interactivo
+```
+
+# Área quemada por mes y año
+
+```{r}
+#| label: area_quemada_por_mes
+#| code-fold: true
+
+# Gráfico de barras agrupadas
+g <-
+  ggplot(incendios_mes, aes(x = mes, y = area_quemada_total, fill = factor(anio))) +
+  geom_col(position = position_dodge(width = 0.8)) +
+  labs(
+    x     = "Mes",
+    y     = "Área quemada (acres)",
+    fill  = "Año"
+  ) +
+  scale_y_continuous() +
+  scale_fill_brewer(palette = "YlOrRd") +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+# Convertir a interactivo
+g_interactivo <- ggplotly(g, tooltip = c("anio", "mes", "area_quemada_total"))
+
+# Mostrar
+g_interactivo
+```
+
+# Temperatura promedio al inicio del incendio por mes y año
+
+```{r}
+#| label: temperatura_por_mes
+#| code-fold: true
+
+# Gráfico de barras agrupadas
+g <-
+  ggplot(incendios_mes, aes(x = mes, y = temperatura_2m_promedio, fill = factor(anio))) +
+  geom_col(position = position_dodge(width = 0.8)) +
+  labs(
+    x     = "Mes",
+    y     = "Temperatura promedio (C)",
+    fill  = "Año"
+  ) +
+  scale_y_continuous() +
+  scale_fill_brewer(palette = "YlOrRd") +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+# Convertir a interactivo
+g_interactivo <- ggplotly(g, tooltip = c("anio", "mes", "temperatura_2m_promedio"))
+
+# Mostrar
+g_interactivo
+```
