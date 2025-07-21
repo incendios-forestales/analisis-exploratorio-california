@@ -264,7 +264,7 @@ g_interactivo
 ## Área quemada
 
 ```{r}
-#| label: area_quemada_por_mes
+#| label: area-quemada-por-mes
 #| code-fold: true
 
 # Sumar el área quemada por mes (todos los años)
@@ -373,3 +373,62 @@ g_interactivo <- ggplotly(g, tooltip = "text") |> config(locale = "es")
 # Mostrar
 g_interactivo
 ```
+
+# Análisis por año y mes
+
+## Cantidad de incendios
+
+```{r}
+#| label: cantidad-incendios-por-anio-mes
+#| code-fold: true
+
+# 1. Crear la etiqueta de mes en español y agregar/llenar valores únicos
+incendios_mes_heatmap <- 
+  incendios_mes |>
+  mutate(
+    mes_es = factor(
+      mes,
+      levels = month(ymd("2025-01-01") + months(0:11), label = TRUE, abbr = TRUE),
+      labels = c("Ene","Feb","Mar","Abr","May","Jun",
+                 "Jul","Ago","Sep","Oct","Nov","Dic")
+    )
+  ) |>
+  # 2. Asegurar UNA fila por (anio, mes_es)
+  group_by(anio, mes_es) |>
+  summarise(
+    n = sum(n),                  # suma o cuenta… pero una sola cifra
+    .groups = "drop"
+  ) |>
+  # 3. Completar los huecos con 0 para ver la cuadrícula completa
+  tidyr::complete(anio, mes_es, fill = list(n = 0)) |>
+  arrange(desc(anio))            # opcional: años de arriba a abajo
+
+# 4. Construir el heatmap
+g <- ggplot(
+        incendios_mes_heatmap,
+        aes(
+          x = mes_es,
+          y = factor(anio),
+          fill = n,
+          text = sprintf("Año: %d<br>Mes: %s<br>Incendios: %d",
+                         anio, mes_es, n)
+        )
+     ) +
+     geom_tile(color = "white") +
+     scale_fill_viridis_c(
+       name = "Incendios", option = "inferno", direction = -1
+     ) +
+     labs(x = "Mes", y = "Año") +
+     theme_minimal(base_size = 12) +
+     theme(
+       panel.grid = element_blank(),
+       axis.text.x = element_text(angle = 45, hjust = 1)
+     )
+
+# 5. Versión interactiva (altura generosa para leer los años)
+g_interactivo <- ggplotly(g, tooltip = "text", height = 700) |>
+                 config(locale = "es")
+
+g_interactivo
+```
+
