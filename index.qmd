@@ -1,7 +1,7 @@
 ---
-title: "Análisis exploratorio de incendios forestales ocurridos en California durante 1998 y 2024"
+title: "Análisis exploratorio de incendios forestales ocurridos en California durante 1980 y 2024"
 author: "Mariela Alvarado, Manuel Vargas"
-date: "2025-07-14"
+date: "2025-07-20"
 format: html
 toc: true
 lang: es
@@ -28,7 +28,7 @@ library(scales)
 #| code-fold: true
 #| echo: false
 
-incendios <- read_csv("incendios-ca-historicos-1998-2024.csv")
+incendios <- read_csv("incendios-ca-historicos-1980-2024.csv")
 
 incendios_anio <-
   incendios |>
@@ -69,8 +69,6 @@ incendios_mes$mes <- factor(
 Los incendios forestales representan una de las amenazas medioambientales más críticas del siglo XXI. Además de destruir ecosistemas y biodiversidad, estos eventos comprometen la salud pública, la seguridad de las comunidades y la estabilidad económica, lo que evidencia la urgente necesidad de herramientas analíticas que permitan comprender y mitigar su impacto. Mediante técnicas de procesamiento y análisis espacial de datos geográficos, el presente estudio se enfoca en la incidencia de incendios forestales como una manifestación del cambio climático. A través del lenguaje de programación R, se desarrolló un sistema de visualización e interpretación geoespacial que integra datos vectoriales y ráster. El análisis se centró en el estado de California, Estados Unidos, una región particularmente vulnerable a eventos extremos asociados al calentamiento global.
 
 Este documento presenta un análisis exploratorio de los datos de incendios forestales facilitados por el [Departamento de Silvicultura y Protección contra Incendios de California (CAL FIRE)](https://www.fire.ca.gov/), a los cuales se les unieron datos de temperatura provenientes del [Reanálisis atmosférico de quinta generación del ECMWF (ERA5)](https://cds.climate.copernicus.eu/).
-
-El análisis abarca el periodo entre los años 1998 y 2024.
 
 # Análisis por año
 
