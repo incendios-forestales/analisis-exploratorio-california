@@ -484,7 +484,7 @@ g <-
       text = paste0(
         "Año: ", anio,
         "<br>Mes: ", mes,
-        "<br>Temperatura promedio: ", comma(area_quemada_total, accuracy = 0.1), " °C"
+        "<br>Temperatura promedio: ", comma(temperatura_2m_promedio_hora_fecha_alarma, accuracy = 0.1), " °C"
       )
     )
   ) +
