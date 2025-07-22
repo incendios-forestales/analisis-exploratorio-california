@@ -490,7 +490,7 @@ g <-
   ) +
   geom_tile(color = "white") +
   scale_fill_viridis_c(
-    name       = "Temperatura promedio (°C)",
+    name       = "Temperatura (°C)",
     option     = "inferno",
     direction  = -1,
     labels     = label_number(accuracy = 1, big.mark = ",")
