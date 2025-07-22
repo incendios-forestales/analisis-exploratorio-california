@@ -1,12 +1,18 @@
 ---
 title: "Análisis exploratorio de incendios forestales ocurridos en California durante 1980 y 2024"
 author: "Mariela Alvarado, Manuel Vargas"
-date: "2025-07-20"
+date: "2025-07-21"
 format: html
 toc: true
 lang: es
 theme: cosmo
 ---
+
+# Introducción
+
+Los incendios forestales representan una de las amenazas medioambientales más críticas del siglo XXI. Además de destruir ecosistemas y biodiversidad, estos eventos comprometen la salud pública, la seguridad de las comunidades y la estabilidad económica, lo que evidencia la urgente necesidad de herramientas analíticas que permitan comprender y mitigar su impacto. Mediante técnicas de procesamiento y análisis espacial de datos geográficos, el presente estudio se enfoca en la incidencia de incendios forestales como una manifestación del cambio climático. A través del lenguaje de programación R, se desarrolló un sistema de visualización e interpretación geoespacial que integra datos vectoriales y ráster. El análisis se centró en el estado de California, Estados Unidos, una región particularmente vulnerable a eventos extremos asociados al calentamiento global.
+
+Este documento presenta un análisis exploratorio de los datos de incendios forestales facilitados por el [Departamento de Silvicultura y Protección contra Incendios de California (CAL FIRE)](https://www.fire.ca.gov/), a los cuales se les unieron datos de temperatura provenientes del [Reanálisis atmosférico de quinta generación del ECMWF (ERA5)](https://cds.climate.copernicus.eu/).
 
 ```{r}
 #| label: cargar-bibliotecas
@@ -28,22 +34,33 @@ library(scales)
 #| code-fold: true
 #| echo: false
 
+# Leer archivo
 incendios <- read_csv("incendios-ca-historicos-1980-2024.csv")
 
-incendios_anio <-
+# Eliminar incendios que no tienen ALARM_DATE
+incendios <-
+  incendios |>
+  drop_na(ALARM_DATE)
+
+# Incendios agrupados por año
+incendios_por_anio <-
   incendios |>
   mutate(
     anio = year(ALARM_DATE)
   ) |>
   group_by(anio) |>
   summarise(
-    n                       = n(),                          # cantidad de incendios
-    area_quemada_total      = sum(GIS_ACRES, na.rm = TRUE), # área quemada total
-    temperatura_2m_promedio = mean(TEMPERATURE_2M_ALARM_DATE, na.rm = TRUE), # temperatura promedio
-    .groups                 = "drop"
+    n                                         = n(),
+    area_quemada_total                        = sum(GIS_ACRES, na.rm = TRUE),
+    temperatura_2m_promedio_hora_fecha_alarma = mean(
+      TEMPERATURE_2M_ALARM_DATE, 
+      na.rm                                   = TRUE
+    ),
+    .groups                                   = "drop"
   )
 
-incendios_mes <-
+# Incendios agrupados por año y mes
+incendios_por_anio_mes <-
   incendios |>
   mutate(
     anio = year(ALARM_DATE),
@@ -51,39 +68,48 @@ incendios_mes <-
   ) |>
   group_by(anio, mes) |>
   summarise(
-    n                       = n(),                          # cantidad de incendios
-    area_quemada_total      = sum(GIS_ACRES, na.rm = TRUE), # área quemada total
-    temperatura_2m_promedio = mean(TEMPERATURE_2M_ALARM_DATE, na.rm = TRUE), # temperatura promedio
-    .groups                 = "drop"
+    n                                         = n(),
+    area_quemada_total                        = sum(GIS_ACRES, na.rm = TRUE),
+    temperatura_2m_promedio_hora_fecha_alarma = mean(
+      TEMPERATURE_2M_ALARM_DATE, 
+      na.rm = TRUE
+    ),
+    .groups                                   = "drop"
   )
 
 # Asegurar que los meses queden en orden enero-diciembre
-incendios_mes$mes <- factor(
-  incendios_mes$mes,
+incendios_por_anio_mes$mes <- factor(
+  incendios_por_anio_mes$mes,
   levels = month(ymd("2025-01-01") + months(0:11), label = TRUE, abbr = TRUE)
 )
+
+# Traducir las abreviaturas de los meses a español
+incendios_por_anio_mes <-
+  incendios_por_anio_mes |>
+    mutate(
+      mes = factor(
+        mes,
+        levels = month.abb,
+        labels = c("Ene", "Feb", "Mar", "Abr", "May", "Jun",
+                   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic")
+      )
+    )
 ```
-
-# Introducción
-
-Los incendios forestales representan una de las amenazas medioambientales más críticas del siglo XXI. Además de destruir ecosistemas y biodiversidad, estos eventos comprometen la salud pública, la seguridad de las comunidades y la estabilidad económica, lo que evidencia la urgente necesidad de herramientas analíticas que permitan comprender y mitigar su impacto. Mediante técnicas de procesamiento y análisis espacial de datos geográficos, el presente estudio se enfoca en la incidencia de incendios forestales como una manifestación del cambio climático. A través del lenguaje de programación R, se desarrolló un sistema de visualización e interpretación geoespacial que integra datos vectoriales y ráster. El análisis se centró en el estado de California, Estados Unidos, una región particularmente vulnerable a eventos extremos asociados al calentamiento global.
-
-Este documento presenta un análisis exploratorio de los datos de incendios forestales facilitados por el [Departamento de Silvicultura y Protección contra Incendios de California (CAL FIRE)](https://www.fire.ca.gov/), a los cuales se les unieron datos de temperatura provenientes del [Reanálisis atmosférico de quinta generación del ECMWF (ERA5)](https://cds.climate.copernicus.eu/).
 
 # Análisis por año
 
 ## Cantidad de incendios
 
 ```{r}
-#| label: grafico-cantidad-incendios_por_anio
+#| label: grafico-cantidad-incendios-por-anio
 #| warning: false
 #| message: false
 #| code-fold: true
 
-# Gráfico de líneas + tendencia
+# Gráfico ggplot2 de líneas + tendencia
 g <-
   ggplot(
-    incendios_anio, 
+    incendios_por_anio, 
     aes(
       x = anio, 
       y = n, 
@@ -94,9 +120,9 @@ g <-
       )
     )
   ) +
-  geom_line(color = "red", linewidth = 1) +       # línea principal
-  geom_point(color = "red", size = 2) +           # puntos sobre la línea
-  geom_smooth(method = "lm", se = FALSE,          # línea de tendencia
+  geom_line(color = "red", linewidth = 1) + # línea principal
+  geom_point(color = "red", size = 2) +     # puntos sobre la línea
+  geom_smooth(method = "lm", se = FALSE,    # línea de tendencia
               linetype = "dashed", linewidth = 0.8,
               color = "gray30") +
   labs(
@@ -109,84 +135,84 @@ g <-
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
 
-# Convertir a interactivo
+# Convertir a gráfico interactivo plotly
 g_interactivo <- ggplotly(g, tooltip = "text") |> config(locale = 'es')
 
-# Mostrar
+# Mostrar el gráfico
 g_interactivo
 ```
 
 ## Área quemada
 
 ```{r}
-#| label: grafico-area_quemada_por_anio
+#| label: grafico-area-quemada-por-anio
 #| warning: false
 #| message: false
 #| code-fold: true
 
-# Gráfico de líneas + tendencia
+# Gráfico ggplot2 de líneas + tendencia
 g <-
   ggplot(
-    incendios_anio,
+    incendios_por_anio,
     aes(
-      x    = anio,
-      y    = area_quemada_total,
+      x = anio,
+      y = area_quemada_total,
       group = 1,
       text = paste0(
         "Año: ", anio,
-        "<br>Área quemada: ", comma(area_quemada_total), " acres"
+        "<br>Área quemada (acres): ", comma(area_quemada_total), " acres"
       )
     )
   ) +
-  geom_line(color = "red", linewidth = 1) +       # línea principal
-  geom_point(color = "red", size = 2) +           # puntos
-  geom_smooth(method = "lm", se = FALSE,          # línea de tendencia
+  geom_line(color = "red", linewidth = 1) + # línea principal
+  geom_point(color = "red", size = 2) +     # puntos
+  geom_smooth(method = "lm", se = FALSE,    # línea de tendencia
               linetype = "dashed", linewidth = 0.8,
               color = "gray30") +
   labs(
     x = "Año",
     y = "Área quemada (acres)"
   ) +
-  scale_y_continuous(labels = comma) +            # separador de miles en eje Y
+  scale_y_continuous(labels = comma) + # separador de miles en eje Y
   theme_minimal(base_size = 12) +
   theme(
     panel.grid.major.x = element_blank(),
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
 
-# Convertir a interactivo con el texto personalizado
+# Convertir a gráfico interactivo plotly
 g_interactivo <- ggplotly(g, tooltip = "text") |> config(locale = 'es')
 
-# Mostrar
+# Mostrar el gráfico
 g_interactivo
 ```
 
-## Temperatura promedio del centroide del incendio durante la hora de emisión de la alarma
+## Temperatura promedio del centroide del incendio a la hora de emisión de la alarma
 
 ```{r}
-#| label: temperatura_por_anio
+#| label: grafico-temperatura-por-anio
 #| warning: false
 #| message: false
 #| code-fold: true
 
-# Gráfico de líneas + tendencia
+# Gráfico ggplot2 de líneas + tendencia
 g <-
   ggplot(
-    incendios_anio,
+    incendios_por_anio,
     aes(
-      x    = anio,
-      y    = temperatura_2m_promedio,
+      x = anio,
+      y = temperatura_2m_promedio_hora_fecha_alarma,
       group = 1,
       text = paste0(
         "Año: ", anio,
-        "<br>Temp. promedio: ",
-        number(temperatura_2m_promedio, accuracy = 0.1), " °C"
+        "<br>Temperatura promedio: ",
+        number(temperatura_2m_promedio_hora_fecha_alarma, accuracy = 0.1), " °C"
       )
     )
   ) +
-  geom_line(color = "red", linewidth = 1) +        # línea principal
-  geom_point(color = "red", size = 2) +            # puntos
-  geom_smooth(method = "lm", se = FALSE,           # tendencia lineal
+  geom_line(color = "red", linewidth = 1) + # línea principal
+  geom_point(color = "red", size = 2) +     # puntos
+  geom_smooth(method = "lm", se = FALSE,    # tendencia lineal
               linetype = "dashed", linewidth = 0.8,
               color = "gray30") +
   labs(
@@ -200,10 +226,10 @@ g <-
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
 
-# Convertir a interactivo con texto personalizado
+# Convertir a gráfico interactivo plotly
 g_interactivo <- ggplotly(g, tooltip = "text") |> config(locale = 'es')
 
-# Mostrar
+# Mostrar gráfico interactivo
 g_interactivo
 ```
 
@@ -212,27 +238,18 @@ g_interactivo
 ## Cantidad de incendios
 
 ```{r}
-#| label: grafico-cantidad-incendios_por_mes
+#| label: grafico-cantidad-incendios-por-anio-mes
 #| code-fold: true
 #| warning: false
 #| message: false
 
 # Sumar la cantidad de incendios por mes (todos los años)
-incendios_mes_total <- incendios_mes |>
+incendios_mes_total <- 
+  incendios_por_anio_mes |>
   group_by(mes) |>
-  summarise(n = sum(n), .groups = "drop") |>
-  # Re-etiquetar los meses a español
-  mutate(
-    mes = factor(
-      mes,
-      levels  = month.abb,                               # orden correcto
-      labels  = c("Ene", "Feb", "Mar", "Abr", "May",
-                  "Jun", "Jul", "Ago", "Sep", "Oct",
-                  "Nov", "Dic")
-    )
-  )
+  summarise(n = sum(n), .groups = "drop")
 
-# Gráfico de barras (una por mes)
+# Gráfico ggplot2 de barras (una por mes)
 g <-
   ggplot(
     incendios_mes_total,
@@ -254,41 +271,32 @@ g <-
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
 
-# Convertir a interactivo con texto personalizado
+# Convertir a gráfico interactivo plotly
 g_interactivo <- ggplotly(g, tooltip = "text")  |> config(locale = 'es')
 
-# Mostrar
+# Mostrar el gráfico interactivo
 g_interactivo
 ```
 
 ## Área quemada
 
 ```{r}
-#| label: area-quemada-por-mes
+#| label: grafico-area-quemada-por-anio-mes
 #| code-fold: true
 
 # Sumar el área quemada por mes (todos los años)
-incendios_area_total <- incendios_mes |>
+incendios_area_total <- 
+  incendios_por_anio_mes |>
   group_by(mes) |>
-  summarise(area_quemada_total = sum(area_quemada_total), .groups = "drop") |>
-  # Re-etiquetar los meses a español
-  mutate(
-    mes = factor(
-      mes,
-      levels = month.abb,                               # orden cronológico
-      labels = c("Ene", "Feb", "Mar", "Abr", "May",
-                 "Jun", "Jul", "Ago", "Sep", "Oct",
-                 "Nov", "Dic")
-    )
-  )
+  summarise(area_quemada_total = sum(area_quemada_total), .groups = "drop")
 
-# Gráfico de barras (una por mes)
+# Gráfico ggplot2 de barras (una por mes)
 g <-
   ggplot(
     incendios_area_total,
     aes(
-      x    = mes,
-      y    = area_quemada_total,
+      x = mes,
+      y = area_quemada_total,
       text = sprintf(
         "Mes: %s<br>Área quemada: %s acres",
         mes,
@@ -311,47 +319,41 @@ g <-
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
 
-# Versión interactiva con texto personalizado
+# Convertir a gráfico interactivo plotly
 g_interactivo <- ggplotly(g, tooltip = "text") |> config(locale = "es")
 
-# Mostrar
+# Mostrar gráfico interactivo
 g_interactivo
 ```
 
-## Temperatura promedio del centroide del incendio durante la hora de emisión de la alarma
+## Temperatura promedio del centroide del incendio a la hora de emisión de la alarma
 
 ```{r}
-#| label: temperatura_por_mes
+#| label: grafico-temperatura-por-anio-mes
 #| code-fold: true
 
 # Calcular la temperatura promedio por mes (promedio de todos los años)
-temperatura_mes_promedio <- incendios_mes |>
+temperatura_mes_promedio <- 
+  incendios_por_anio_mes |>
   group_by(mes) |>
   summarise(
-    temperatura_2m_promedio = mean(temperatura_2m_promedio, na.rm = TRUE),
-    .groups = "drop"
-  ) |>
-  # Re-etiquetar los meses a español
-  mutate(
-    mes = factor(
-      mes,
-      levels = month.abb,                               # orden cronológico
-      labels = c("Ene", "Feb", "Mar", "Abr", "May",
-                 "Jun", "Jul", "Ago", "Sep", "Oct",
-                 "Nov", "Dic")
-    )
+    temperatura_2m_promedio_hora_fecha_alarma = mean(
+      temperatura_2m_promedio_hora_fecha_alarma, 
+      na.rm = TRUE
+    ),
+    .groups                                   = "drop"
   )
 
-# Gráfico de barras (una por mes)
+# Gráfico ggplot2 de barras (una por mes)
 g <-
   ggplot(
     temperatura_mes_promedio,
     aes(
-      x    = mes,
-      y    = temperatura_2m_promedio,
+      x = mes,
+      y = temperatura_2m_promedio_hora_fecha_alarma,
       text = sprintf(
         "Mes: %s<br>Temp. promedio: %.1f °C",
-        mes, temperatura_2m_promedio
+        mes, temperatura_2m_promedio_hora_fecha_alarma
       )
     )
   ) +
@@ -367,68 +369,147 @@ g <-
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
 
-# Versión interactiva con texto personalizado
+# Convertir a gráfico interactivo plotly
 g_interactivo <- ggplotly(g, tooltip = "text") |> config(locale = "es")
 
-# Mostrar
+# Mostrar gráfico interactivo
 g_interactivo
 ```
 
-# Análisis por año y mes
+# Análisis por mes y año
 
 ## Cantidad de incendios
 
 ```{r}
-#| label: cantidad-incendios-por-anio-mes
+#| label: grafico-cantidad-incendios-por-mes-anio
 #| code-fold: true
 
-# 1. Crear la etiqueta de mes en español y agregar/llenar valores únicos
-incendios_mes_heatmap <- 
-  incendios_mes |>
-  mutate(
-    mes_es = factor(
-      mes,
-      levels = month(ymd("2025-01-01") + months(0:11), label = TRUE, abbr = TRUE),
-      labels = c("Ene","Feb","Mar","Abr","May","Jun",
-                 "Jul","Ago","Sep","Oct","Nov","Dic")
+# Heatmap
+g <-
+  ggplot(
+    incendios_por_anio_mes,
+    aes(
+      x = mes,
+      y = factor(anio),
+      fill = n,
+      text = paste0(
+        "Año: ", anio,
+        "<br>Mes: ", mes,
+        "<br>Cantidad de incendios: ", n
+      )
     )
-  ) |>
-  # 2. Asegurar UNA fila por (anio, mes_es)
-  group_by(anio, mes_es) |>
-  summarise(
-    n = sum(n),                  # suma o cuenta… pero una sola cifra
-    .groups = "drop"
-  ) |>
-  # 3. Completar los huecos con 0 para ver la cuadrícula completa
-  tidyr::complete(anio, mes_es, fill = list(n = 0)) |>
-  arrange(desc(anio))            # opcional: años de arriba a abajo
+  ) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c(name = "Incendios", option = "inferno", direction = -1) +
+  labs(
+    x = "Mes",
+    y = "Año"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
 
-# 4. Construir el heatmap
-g <- ggplot(
-        incendios_mes_heatmap,
-        aes(
-          x = mes_es,
-          y = factor(anio),
-          fill = n,
-          text = sprintf("Año: %d<br>Mes: %s<br>Incendios: %d",
-                         anio, mes_es, n)
-        )
-     ) +
-     geom_tile(color = "white") +
-     scale_fill_viridis_c(
-       name = "Incendios", option = "inferno", direction = -1
-     ) +
-     labs(x = "Mes", y = "Año") +
-     theme_minimal(base_size = 12) +
-     theme(
-       panel.grid = element_blank(),
-       axis.text.x = element_text(angle = 45, hjust = 1)
-     )
+# Convertir a gráfico interactivo plotly
+g_interactivo <- 
+  ggplotly(g, tooltip = "text", height = 700) |> 
+  config(locale = 'es')
 
-# 5. Versión interactiva (altura generosa para leer los años)
-g_interactivo <- ggplotly(g, tooltip = "text", height = 700) |>
-                 config(locale = "es")
-
+# Mostrar gráfico interactivo
 g_interactivo
 ```
 
+## Área quemada
+
+```{r}
+#| label: grafico-area-quemada-por-mes-anio
+#| code-fold: true
+
+# Heatmap
+g <-
+  ggplot(
+    incendios_por_anio_mes,
+    aes(
+      x = mes,
+      y = factor(anio),
+      fill = area_quemada_total,
+      text = paste0(
+        "Año: ", anio,
+        "<br>Mes: ", mes,
+        "<br>Área quemada: ", comma(area_quemada_total, accuracy = 1), " acres"
+      )
+    )
+  ) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c(
+    name       = "Área (acres)",
+    option     = "inferno",
+    direction  = -1,
+    labels     = label_number(accuracy = 1, big.mark = ",")
+  ) +
+  labs(
+    x = "Mes",
+    y = "Año"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+# Versión interactiva
+g_interactivo <- 
+  ggplotly(g, tooltip = "text", height = 700) |> 
+  config(locale = 'es')
+
+# Mostrar el gráfico
+g_interactivo
+```
+
+## Temperatura promedio del centroide del incendio a la hora de emisión de la alarma
+
+```{r}
+#| label: grafico-temperatura-promedio-por-mes-anio
+#| code-fold: true
+
+# Heatmap
+g <-
+  ggplot(
+    incendios_por_anio_mes,
+    aes(
+      x = mes,
+      y = factor(anio),
+      fill = temperatura_2m_promedio_hora_fecha_alarma,
+      text = paste0(
+        "Año: ", anio,
+        "<br>Mes: ", mes,
+        "<br>Temperatura promedio: ", comma(area_quemada_total, accuracy = 0.1), " °C"
+      )
+    )
+  ) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c(
+    name       = "Temperatura promedio (°C)",
+    option     = "inferno",
+    direction  = -1,
+    labels     = label_number(accuracy = 1, big.mark = ",")
+  ) +
+  labs(
+    x = "Mes",
+    y = "Año"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+# Versión interactiva
+g_interactivo <- 
+  ggplotly(g, tooltip = "text", height = 700) |> 
+  config(locale = 'es')
+
+# Mostrar el gráfico
+g_interactivo
+```
