@@ -22,7 +22,7 @@ Este documento presenta un análisis exploratorio de los datos de incendios fore
 #| echo: false
 
 library(tidyverse)
-library(lubridate)
+library(DT)
 library(plotly)
 library(scales)
 ```
@@ -95,6 +95,31 @@ incendios_por_anio_mes <-
       )
     )
 ```
+
+# Registros de incendios
+
+```{r}
+#| label: tabla-incendios
+#| code-fold: true
+
+# Definir la tabla DT
+t <-
+  incendios |>
+  select(FIRE_NAME, ALARM_DATE, GIS_ACRES, TEMPERATURE_2M_ALARM_DATE) |>
+  arrange(ALARM_DATE) |>
+  datatable(
+    rownames = FALSE,
+    colnames = c("Nombre del incendio", "Fecha de alarma", "Área quemada (acres)", "Temperatura (°C)"),
+    options = list(
+      pageLength = 10,
+      language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Spanish.json')
+    )
+  )
+
+# Mostrar la tabla
+t
+```
+
 
 # Análisis por año
 
@@ -383,6 +408,8 @@ g_interactivo
 ```{r}
 #| label: grafico-cantidad-incendios-por-mes-anio
 #| code-fold: true
+#| fig-height: 8
+#| fig-width: 8
 
 # Heatmap
 g <-
@@ -412,12 +439,12 @@ g <-
   )
 
 # Convertir a gráfico interactivo plotly
-g_interactivo <- 
-  ggplotly(g, tooltip = "text", height = 700) |> 
-  config(locale = 'es')
+# g_interactivo <- 
+#   ggplotly(g, tooltip = "text", height = 700) |> 
+#   config(locale = 'es')
 
-# Mostrar gráfico interactivo
-g_interactivo
+# Mostrar gráfico
+g
 ```
 
 ## Área quemada
@@ -425,6 +452,8 @@ g_interactivo
 ```{r}
 #| label: grafico-area-quemada-por-mes-anio
 #| code-fold: true
+#| fig-height: 8
+#| fig-width: 8
 
 # Heatmap
 g <-
@@ -459,12 +488,12 @@ g <-
   )
 
 # Versión interactiva
-g_interactivo <- 
-  ggplotly(g, tooltip = "text", height = 700) |> 
-  config(locale = 'es')
+# g_interactivo <- 
+#   ggplotly(g, tooltip = "text", height = 700) |> 
+#   config(locale = 'es')
 
 # Mostrar el gráfico
-g_interactivo
+g
 ```
 
 ## Temperatura promedio del centroide del incendio a la hora de emisión de la alarma
@@ -472,6 +501,8 @@ g_interactivo
 ```{r}
 #| label: grafico-temperatura-promedio-por-mes-anio
 #| code-fold: true
+#| fig-height: 8
+#| fig-width: 8
 
 # Heatmap
 g <-
@@ -506,10 +537,10 @@ g <-
   )
 
 # Versión interactiva
-g_interactivo <- 
-  ggplotly(g, tooltip = "text", height = 700) |> 
-  config(locale = 'es')
+# g_interactivo <- 
+#  ggplotly(g, tooltip = "text", height = 700) |> 
+#  config(locale = 'es')
 
 # Mostrar el gráfico
-g_interactivo
+g
 ```
