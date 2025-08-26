@@ -1,7 +1,7 @@
 ---
 title: "Análisis exploratorio de incendios forestales ocurridos en California durante 1980 y 2024"
 author: "Mariela Alvarado, Manuel Vargas"
-date: "2025-08-05"
+date: "2025-08-25"
 format: html
 toc: true
 lang: es
@@ -119,6 +119,12 @@ total_precipitation <- rast("total_precipitation_ca_promedio_1980-2024.tif")
 u_component_of_wind_10m <- rast("10m_u_component_of_wind_ca_promedio_1980-2024.tif")
 # Componente v (norte-sur) del viento a 10 m
 v_component_of_wind_10m <- rast("10m_v_component_of_wind_ca_promedio_1980-2024.tif")
+# Velocidad del viento a 10 m
+wind_speed_10m <- rast("wind_speed_kmh_10m_promedio_1980-2024.tif")
+# Dirección del viento (desde)
+wind_dir_from_10m <- rast("wind_dir_from_10m_promedio_1980-2024.tif")
+# Dirección del viento (hacia)
+wind_dir_to_10m <- rast("wind_dir_to_10m_promedio_1980-2024.tif")
 # Índice de área foliar (LAI) – vegetación alta
 lai_high_vegetation <- rast("leaf_area_index_high_vegetation_ca_promedio_1980-2024.tif")
 # Índice de área foliar (LAI) – vegetación baja
@@ -147,6 +153,9 @@ paleta_soil_temperature_level_1 <- paleta_temperature
 paleta_total_precipitation      <- "PuBuGn"
 paleta_u_component_of_wind_10m  <- "PuOr"
 paleta_v_component_of_wind_10m  <- "PuOr"
+paleta_wind_speed_10m           <- "YlOrRd"
+paleta_wind_dir_from_10m        <- "matplotlib.twilight"
+paleta_wind_dir_to_10m          <- "matplotlib.twilight_shifted"
 paleta_lai_high_vegetation      <- "YlGn"
 paleta_lai_low_vegetation       <- "YlGn"
 
@@ -1034,6 +1043,210 @@ tm_shape(v_diff) +
   tm_raster(
     col.scale  = escala_v_diff,
     col.legend = tm_legend(title = "Δ v (m s⁻¹)")
+  ) +
+  tm_layout(
+    outer.margins = 0,
+    inner.margins = 0,
+    legend.outside = TRUE,
+    frame = FALSE
+  )
+```
+
+## Velocidad del viento a 10 m
+
+```{r}
+#| label: mapa-velocidad-viento
+#| warning: false
+#| message: false
+#| code-fold: true
+#| fig-height: 8
+#| fig-width: 8
+
+tmap_mode("plot")
+
+tm_shape(wind_speed_10m) +
+  tm_raster(
+    palette = paleta_wind_speed_10m,
+    style   = "cont",
+    title   = "kmh"
+  ) +
+  tm_facets(ncol = 3) +
+  tm_layout(
+    outer.margins = 0,
+    inner.margins = 0,
+    legend.outside = TRUE,
+    frame = FALSE
+  )
+```
+
+**Diferencia (2020–2024) – (1980–1984)**
+
+```{r}
+#| label: mapa-diferencia-velocidad_viento-1980_1984_vs_2020_2024
+#| warning: false
+#| message: false
+#| code-fold: true
+#| fig-height: 6
+#| fig-width: 6
+
+# -------------------------------------------
+# Diferencia de velocidad del viento (km / h)
+# (2020–2024) – (1980–1984)
+# -------------------------------------------
+speed_diff <- wind_speed_10m[["wind_speed_kmh_2020-2024"]] - wind_speed_10m[["wind_speed_kmh_1980-1984"]]
+
+# Rango simétrico alrededor de 0
+rango_speed <- max(abs(minmax(speed_diff)))
+
+escala_speed_diff <- tm_scale_continuous(
+  limits       = c(-rango_speed, rango_speed),
+  values       = "-BrBG",   # marrón = disminución, azul-verde = aumento
+  midpoint     = 0,
+  values.range = c(0, 1)
+)
+
+tmap_mode("plot")
+
+tm_shape(speed_diff) +
+  tm_raster(
+    col.scale  = escala_speed_diff,
+    col.legend = tm_legend(title = "Δ Velocidad del viento (km/h)")
+  ) +
+  tm_layout(
+    outer.margins = 0,
+    inner.margins = 0,
+    legend.outside = TRUE,
+    frame = FALSE
+  )
+```
+
+## Dirección del viento (desde) a 10 m
+
+```{r}
+#| label: mapa-direccion-viento-desde
+#| warning: false
+#| message: false
+#| code-fold: true
+#| fig-height: 8
+#| fig-width: 8
+
+tmap_mode("plot")
+
+tm_shape(wind_dir_from_10m) +
+  tm_raster(
+    palette = paleta_wind_dir_from_10m,
+    style   = "cont",
+    title   = "grados"
+  ) +
+  tm_facets(ncol = 3) +
+  tm_layout(
+    outer.margins = 0,
+    inner.margins = 0,
+    legend.outside = TRUE,
+    frame = FALSE
+  )
+```
+
+**Diferencia (2020–2024) – (1980–1984)**
+
+```{r}
+#| label: mapa-diferencia-direccion_viento_desde-1980_1984_vs_2020_2024
+#| warning: false
+#| message: false
+#| code-fold: true
+#| fig-height: 6
+#| fig-width: 6
+
+# -------------------------------------------
+# Diferencia de dirección del viento (grados)
+# (2020–2024) – (1980–1984)
+# -------------------------------------------
+dir_wind_from_diff <- wind_dir_from_10m[["wind_dir_from_2020-2024"]] - wind_dir_from_10m[["wind_dir_from_1980-1984"]]
+
+# Rango simétrico alrededor de 0
+rango_dir_wind_from <- max(abs(minmax(dir_wind_from_diff)))
+
+escala_dir_wind_from_diff <- tm_scale_continuous(
+  limits       = c(-rango_speed, rango_speed),
+  values       = "-BrBG",   # marrón = disminución, azul-verde = aumento
+  midpoint     = 0,
+  values.range = c(0, 1)
+)
+
+tmap_mode("plot")
+
+tm_shape(dir_wind_from_diff) +
+  tm_raster(
+    col.scale  = escala_dir_wind_from_diff,
+    col.legend = tm_legend(title = "Δ Dirección del viento (desde) (grados)")
+  ) +
+  tm_layout(
+    outer.margins = 0,
+    inner.margins = 0,
+    legend.outside = TRUE,
+    frame = FALSE
+  )
+```
+
+## Dirección del viento (hacia) a 10 m
+
+```{r}
+#| label: mapa-direccion-viento-hacia
+#| warning: false
+#| message: false
+#| code-fold: true
+#| fig-height: 8
+#| fig-width: 8
+
+tmap_mode("plot")
+
+tm_shape(wind_dir_to_10m) +
+  tm_raster(
+    palette = paleta_wind_dir_to_10m,
+    style   = "cont",
+    title   = "grados"
+  ) +
+  tm_facets(ncol = 3) +
+  tm_layout(
+    outer.margins = 0,
+    inner.margins = 0,
+    legend.outside = TRUE,
+    frame = FALSE
+  )
+```
+
+**Diferencia (2020–2024) – (1980–1984)**
+
+```{r}
+#| label: mapa-diferencia-direccion_viento_hacia-1980_1984_vs_2020_2024
+#| warning: false
+#| message: false
+#| code-fold: true
+#| fig-height: 6
+#| fig-width: 6
+
+# -------------------------------------------
+# Diferencia de dirección del viento (grados)
+# (2020–2024) – (1980–1984)
+# -------------------------------------------
+dir_wind_to_diff <- wind_dir_to_10m[["wind_dir_to_2020-2024"]] - wind_dir_to_10m[["wind_dir_to_1980-1984"]]
+
+# Rango simétrico alrededor de 0
+rango_dir_wind_to <- max(abs(minmax(dir_wind_to_diff)))
+
+escala_dir_wind_to_diff <- tm_scale_continuous(
+  limits       = c(-rango_speed, rango_speed),
+  values       = "-BrBG",   # marrón = disminución, azul-verde = aumento
+  midpoint     = 0,
+  values.range = c(0, 1)
+)
+
+tmap_mode("plot")
+
+tm_shape(dir_wind_to_diff) +
+  tm_raster(
+    col.scale  = escala_dir_wind_to_diff,
+    col.legend = tm_legend(title = "Δ Dirección del viento (hacia) (grados)")
   ) +
   tm_layout(
     outer.margins = 0,
